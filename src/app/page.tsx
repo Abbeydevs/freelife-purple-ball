@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,10 @@ import {
   Clock,
   ArrowRight,
   Users,
+  Loader2,
 } from "lucide-react";
 
-export default async function HomePage() {
+async function HomeContent() {
   let registeredCount = 0;
   try {
     registeredCount = await prisma.booking.count({
@@ -25,10 +27,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="relative min-h-screen text-zinc-100 font-sans selection:bg-purple-600 selection:text-white">
-      <div className="absolute top-[-10%] left-[-10%] w-160 h-160 bg-purple-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-160 h-160 bg-fuchsia-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
-
+    <>
       <header className="relative z-10 w-full max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-purple-600/20 border border-purple-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.3)]">
@@ -42,7 +41,7 @@ export default async function HomePage() {
 
         <Link href="/register">
           <Button className="rounded-full bg-white hover:bg-zinc-200 text-black font-medium text-sm px-6 h-11 transition-all">
-            Secure Invitation
+            Get Invitation
           </Button>
         </Link>
       </header>
@@ -51,7 +50,7 @@ export default async function HomePage() {
         <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-black/60 border border-purple-500/30 backdrop-blur-md shadow-[0_0_20px_rgba(124,58,237,0.2)]">
           <Sparkles className="w-4 h-4 text-purple-400" />
           <span className="text-xs sm:text-sm font-light tracking-widest uppercase text-zinc-300">
-            Celebrating 7 Years of Impact
+            Celebrating 7 Years of Impact • {registeredCount} Registered
           </span>
         </div>
 
@@ -122,7 +121,7 @@ export default async function HomePage() {
             <p className="text-zinc-400 text-sm font-light leading-relaxed">
               An intimate dinner date experience. Requires attending with a Plus
               One. If your Plus One is a Freelifer, you unlock exclusive free
-              guest passes to matchmake two single friends!
+              guest passes to matchmake two single friends[cite: 1]!
             </p>
           </Card>
 
@@ -163,6 +162,28 @@ export default async function HomePage() {
           </div>
         </Card>
       </section>
+    </>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <main className="relative min-h-screen text-zinc-100 font-sans selection:bg-purple-600 selection:text-white">
+      <div className="absolute top-[-10%] left-[-10%] w-160 h-160 bg-purple-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-160 h-160 bg-fuchsia-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
+
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex flex-col items-center justify-center text-zinc-400 space-y-4">
+            <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
+            <p className="font-light text-sm tracking-widest uppercase">
+              Loading Purple Ball...
+            </p>
+          </div>
+        }
+      >
+        <HomeContent />
+      </Suspense>
     </main>
   );
 }
