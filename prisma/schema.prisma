@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum EventType {
+  AFTER_PARTY_ONLY
+  PURPLE_BALL_AND_AFTER_PARTY
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Booking {
+  id            String    @id @default(cuid())
+  attendeeName  String
+  attendeeEmail String    @unique
+  attendeePhone String
+  eventType     EventType
+
+  amount     Int           @default(10000)
+  receiptUrl String
+  status     PaymentStatus @default(PENDING)
+
+  qrToken     String?   @unique
+  isCheckedIn Boolean   @default(false)
+  checkedInAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plusOne       PlusOne?
+  invitedGuests InvitedGuest[]
+
+  @@index([status])
+  @@index([qrToken])
+}
+
+model PlusOne {
+  id        String  @id @default(cuid())
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  name        String
+  email       String
+  phone       String
+  isFreelifer Boolean @default(false)
+
+  qrToken     String?   @unique
+  isCheckedIn Boolean   @default(false)
+  checkedInAt DateTime?
+}
+
+model InvitedGuest {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  name  String
+  email String
+  phone String
+
+  invitedByRole String
+
+  qrToken     String?   @unique
+  isCheckedIn Boolean   @default(false)
+  checkedInAt DateTime?
+
+  @@index([bookingId])
+}

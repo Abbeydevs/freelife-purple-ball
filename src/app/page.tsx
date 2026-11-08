@@ -1,69 +1,168 @@
-import Image from "next/image";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  HeartHandshake,
+  UtensilsCrossed,
+  GlassWater,
+  Sparkles,
+  Calendar,
+  Clock,
+  ArrowRight,
+  Users,
+} from "lucide-react";
 
-export default function Home() {
+export default async function HomePage() {
+  let registeredCount = 0;
+  try {
+    registeredCount = await prisma.booking.count({
+      where: { status: { not: "REJECTED" } },
+    });
+  } catch (error) {
+    console.error("Error fetching registered count:", error);
+    registeredCount = 0;
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="relative min-h-screen text-zinc-100 font-sans selection:bg-purple-600 selection:text-white">
+      <div className="absolute top-[-10%] left-[-10%] w-160 h-160 bg-purple-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-160 h-160 bg-fuchsia-900/10 rounded-full blur-[150px] pointer-events-none z-0" />
+
+      <header className="relative z-10 w-full max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-purple-600/20 border border-purple-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.3)]">
+            <HeartHandshake className="w-5 h-5 text-purple-400" />
+          </div>
+          <span className="font-light tracking-widest uppercase text-sm text-zinc-300">
+            Freelife Community{" "}
+            <span className="text-purple-400 font-normal">7 Years</span>
+          </span>
+        </div>
+
+        <Link href="/register">
+          <Button className="rounded-full bg-white hover:bg-zinc-200 text-black font-medium text-sm px-6 h-11 transition-all">
+            Secure Invitation
+          </Button>
+        </Link>
+      </header>
+
+      <section className="relative z-10 max-w-5xl mx-auto px-6 pt-12 pb-20 text-center space-y-8">
+        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-black/60 border border-purple-500/30 backdrop-blur-md shadow-[0_0_20px_rgba(124,58,237,0.2)]">
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          <span className="text-xs sm:text-sm font-light tracking-widest uppercase text-zinc-300">
+            Celebrating 7 Years of Impact
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-light tracking-tight uppercase text-white leading-[1.05]">
+            Purple Ball <br />
+            <span className="font-normal text-transparent bg-clip-text bg-linear-to-r from-purple-400 via-fuchsia-300 to-purple-500">
+              & After Party
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="max-w-xl mx-auto text-zinc-400 text-base sm:text-lg font-light pt-2 leading-relaxed">
+            An evening of elegance, connection & celebration. Come with your
+            plus one for a night of fine dining, high energy, and unforgettable
+            memories.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <Link href="/register" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto h-16 px-10 rounded-full bg-white hover:bg-zinc-200 text-black font-medium text-lg tracking-wide shadow-2xl transition-all flex items-center justify-center gap-3">
+              <HeartHandshake className="w-5 h-5 text-purple-600" />
+              Register for Event
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+          </Link>
         </div>
-      </main>
-    </div>
+
+        <div className="pt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+          <div className="flex items-center justify-center gap-3 bg-[#0a0a0a]/80 backdrop-blur-md border border-zinc-800/80 rounded-full py-4 px-6">
+            <Calendar className="w-5 h-5 text-purple-400 shrink-0" />
+            <span className="text-sm font-light text-zinc-200">
+              Friday, Dec 11, 2026
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-3 bg-[#0a0a0a]/80 backdrop-blur-md border border-zinc-800/80 rounded-full py-4 px-6">
+            <Clock className="w-5 h-5 text-purple-400 shrink-0" />
+            <span className="text-sm font-light text-zinc-200">
+              Dinner & After Party
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-3 bg-[#0a0a0a]/80 backdrop-blur-md border border-zinc-800/80 rounded-full py-4 px-6">
+            <Users className="w-5 h-5 text-purple-400 shrink-0" />
+            <span className="text-sm font-light text-zinc-200">
+              Strictly Plus One
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-8">
+        <div className="text-center space-y-2">
+          <h2 className="text-3xl font-light text-white tracking-tight">
+            The Experience
+          </h2>
+          <p className="text-zinc-500 text-sm font-light">
+            Choose your preferred way to celebrate with the community.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-[#0a0a0a]/80 backdrop-blur-2xl border border-zinc-800/80 rounded-md p-8 space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-purple-900/20 border border-purple-500/30 flex items-center justify-center">
+              <UtensilsCrossed className="w-6 h-6 text-purple-400" />
+            </div>
+            <h3 className="text-xl font-normal text-white">
+              The Purple Ball (Dinner)
+            </h3>
+            <p className="text-zinc-400 text-sm font-light leading-relaxed">
+              An intimate dinner date experience. Requires attending with a Plus
+              One. If your Plus One is a Freelifer, you unlock exclusive free
+              guest passes to matchmake two single friends!
+            </p>
+          </Card>
+
+          <Card className="bg-[#0a0a0a]/80 backdrop-blur-2xl border border-zinc-800/80 rounded-md p-8 space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-purple-900/20 border border-purple-500/30 flex items-center justify-center">
+              <GlassWater className="w-6 h-6 text-purple-400" />
+            </div>
+            <h3 className="text-xl font-normal text-white">The After Party</h3>
+            <p className="text-zinc-400 text-sm font-light leading-relaxed">
+              Can&apos;t make the dinner? Join us later for the vibrant
+              after-party hangout. Come ready to mingle, network, and celebrate
+              7 incredible years of Freelife.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      <section className="relative z-10 max-w-5xl mx-auto px-6 py-12 pb-24">
+        <Card className="bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/5 rounded-md p-8 sm:p-12 shadow-2xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-3 text-center md:text-left">
+              <span className="text-xs uppercase tracking-widest text-purple-400 font-light">
+                Support The Movement
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-light text-white">
+                Support Contribution (Minimum ₦10,000)
+              </h3>
+              <p className="text-zinc-400 text-sm font-light max-w-xl">
+                This is a support contribution rather than a gate fee. Give any
+                amount starting from ₦10,000 to secure your registration.
+              </p>
+            </div>
+            <Link href="/register">
+              <Button className="h-14 px-8 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-medium text-base shrink-0 shadow-lg transition-all">
+                Get Started Now
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </section>
+    </main>
   );
 }
