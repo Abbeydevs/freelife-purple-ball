@@ -134,13 +134,13 @@ export default function Step1Form() {
           </h2>
           <div className="pt-2 space-y-1">
             <p className="text-sm font-medium text-zinc-300">
-              Bank: <span className="text-purple-400">Zenith Bank</span>
+              Bank: <span className="text-purple-400">Access Bank</span>
             </p>
             <p className="text-lg font-bold tracking-widest text-white">
-              1234567890
+              1220219041
             </p>
             <p className="text-xs font-light text-zinc-500 uppercase tracking-widest">
-              Freelife Community
+              Free Life Leadership Initiative
             </p>
           </div>
         </div>
