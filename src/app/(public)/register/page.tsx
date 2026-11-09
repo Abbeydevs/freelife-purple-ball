@@ -8,13 +8,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  HeartHandshake,
-  UtensilsCrossed,
-  Users,
-  Sparkles,
-  CheckCircle2,
-} from "lucide-react";
+import { UtensilsCrossed, Users, Sparkles, CheckCircle2 } from "lucide-react";
 
 import Step1Form from "@/components/forms/Step1Form";
 import Step2Form from "@/components/forms/Step2Form";
@@ -29,7 +23,6 @@ export default function RegistrationPage() {
   return (
     <main className="relative min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans">
       <Card className="relative z-10 w-full max-w-2xl bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/5 rounded-md shadow-2xl overflow-hidden">
-        {/* Progress Bar */}
         <div className="absolute top-0 left-0 h-1 bg-zinc-900 w-full">
           <div
             className="h-full bg-purple-600 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(124,58,237,0.5)]"
@@ -40,7 +33,12 @@ export default function RegistrationPage() {
         <CardHeader className="space-y-4 pb-8 pt-14 px-6 sm:px-12 text-center">
           <div className="mx-auto w-14 h-14 rounded-full bg-zinc-900/50 border border-zinc-800 flex items-center justify-center mb-2">
             {currentStep === 1 && (
-              <HeartHandshake className="w-6 h-6 text-purple-400" />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/logo.png"
+                alt="Freelife Logo"
+                className="w-12 h-12 object-contain rounded-full"
+              />
             )}
             {currentStep === 2 && (
               <UtensilsCrossed className="w-6 h-6 text-purple-400" />

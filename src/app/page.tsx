@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -28,21 +29,16 @@ async function HomeContent() {
 
   return (
     <>
-      <header className="relative z-10 w-full max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-600/20 border border-purple-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.3)]">
-            <HeartHandshake className="w-5 h-5 text-purple-400" />
-          </div>
-          <span className="font-light tracking-widest uppercase text-sm text-zinc-300">
-            Freelife Community{" "}
-            <span className="text-purple-400 font-normal">7 Years</span>
-          </span>
-        </div>
-
-        <Link href="/register">
-          <Button className="rounded-full bg-white hover:bg-zinc-200 text-black font-medium text-sm px-6 h-11 transition-all">
-            Get Invitation
-          </Button>
+      <header className="relative z-10 w-full max-w-6xl mx-auto px-6 py-8 flex items-center justify-center">
+        <Link
+          href="/"
+          className="inline-block hover:opacity-80 transition-opacity"
+        >
+          <img
+            src="/logo.png"
+            alt="Freelife Logo"
+            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-full shadow-[0_0_20px_rgba(124,58,237,0.3)] bg-white border border-purple-500/20"
+          />
         </Link>
       </header>
 
@@ -121,7 +117,7 @@ async function HomeContent() {
             <p className="text-zinc-400 text-sm font-light leading-relaxed">
               An intimate dinner date experience. Requires attending with a Plus
               One. If your Plus One is a Freelifer, you unlock exclusive free
-              guest passes to matchmake two single friends[cite: 1]!
+              guest passes to matchmake two single friends!
             </p>
           </Card>
 

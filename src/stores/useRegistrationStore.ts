@@ -23,13 +23,17 @@ export const stepThreeSchema = z.object({
 });
 
 export const stepFourSchema = z.object({
-  primaryGuestName: z.string().min(2, "Guest name is required"),
-  primaryGuestEmail: z.string().email("Invalid email address"),
-  primaryGuestPhone: z.string().min(10, "Phone number is required"),
+  primaryGuestName: z.string().optional().or(z.literal("")),
+  primaryGuestEmail: z
+    .union([z.string().email("Invalid email address"), z.literal("")])
+    .optional(),
+  primaryGuestPhone: z.string().optional().or(z.literal("")),
 
-  plusOneGuestName: z.string().min(2, "Guest name is required"),
-  plusOneGuestEmail: z.string().email("Invalid email address"),
-  plusOneGuestPhone: z.string().min(10, "Phone number is required"),
+  plusOneGuestName: z.string().optional().or(z.literal("")),
+  plusOneGuestEmail: z
+    .union([z.string().email("Invalid email address"), z.literal("")])
+    .optional(),
+  plusOneGuestPhone: z.string().optional().or(z.literal("")),
 });
 
 export type RegistrationData = Partial<z.infer<typeof stepOneSchema>> &

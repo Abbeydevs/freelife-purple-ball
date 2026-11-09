@@ -16,8 +16,7 @@ import { useState } from "react";
 type Step4FormValues = z.infer<typeof stepFourSchema>;
 
 export default function Step4Form() {
-  const { formData, setFormData, prevStep, jumpToStep } =
-    useRegistrationStore();
+  const { formData, prevStep, jumpToStep } = useRegistrationStore();
 
   const form = useForm<Step4FormValues>({
     resolver: zodResolver(stepFourSchema),

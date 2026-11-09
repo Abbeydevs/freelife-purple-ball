@@ -10,7 +10,7 @@ import {
 } from "@/stores/useRegistrationStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Upload, Loader2 } from "lucide-react";
+import { ArrowRight, Upload, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type Step1FormValues = z.infer<typeof stepOneSchema>;
@@ -127,7 +127,8 @@ export default function Step1Form() {
       <div className="pt-4 border-t border-white/5 space-y-6">
         <div className="text-center space-y-2">
           <p className="text-sm text-zinc-400 font-light">
-            To support the movement, please make a transfer of at least
+            To o support the success of our anniversary celebration, please make
+            a contribution of at least
           </p>
           <h2 className="text-3xl font-normal text-white tracking-tight">
             ₦10,000
@@ -151,7 +152,7 @@ export default function Step1Form() {
               Support Amount (₦)
             </label>
             <Input
-              {...form.register("amount")}
+              {...form.register("amount", { valueAsNumber: true })}
               type="number"
               className="h-14 w-full rounded-full bg-black/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-purple-500 text-lg"
             />
@@ -170,7 +171,7 @@ export default function Step1Form() {
                 <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
               ) : currentReceiptUrl ? (
                 <span className="text-purple-400 font-medium flex items-center gap-2">
-                  ✓ Receipt Uploaded
+                  <CheckCircle /> Receipt Uploaded
                 </span>
               ) : (
                 <>
