@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useRegistrationStore } from "@/stores/useRegistrationStore";
 import {
   Card,
@@ -8,99 +10,246 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { UtensilsCrossed, Users, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  UtensilsCrossed,
+  Users,
+  Sparkles,
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+} from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
 
 import Step1Form from "@/components/forms/Step1Form";
 import Step2Form from "@/components/forms/Step2Form";
 import Step3Form from "@/components/forms/Step3Form";
 import Step4Form from "@/components/forms/Step4Form";
-import Link from "next/link";
+
+import {
+  PlusOneStep1,
+  PlusOneStep2,
+  PlusOneStep3,
+} from "@/components/forms/PlusOneForms";
 import { Button } from "@/components/ui/button";
+import Step5Form from "@/components/forms/step5Form";
 
-export default function RegistrationPage() {
-  const { currentStep } = useRegistrationStore();
+function RegistrationFormRouter() {
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("ref");
 
-  return (
-    <main className="relative min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans">
-      <Card className="relative z-10 w-full max-w-2xl bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/5 rounded-md shadow-2xl overflow-hidden">
+  const { currentStep, isPlusOneFlow, inviterName, setPlusOneMode } =
+    useRegistrationStore();
+  const [isLoadingInvite, setIsLoadingInvite] = useState(!!inviteToken);
+  const [inviteError, setInviteError] = useState("");
+
+  useEffect(() => {
+    if (inviteToken) {
+      fetch(`/api/register/invite?token=${inviteToken}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.error) {
+            setInviteError(data.error);
+          } else {
+            setPlusOneMode(data.inviterName, data.parentId);
+            toast.success(
+              `Invite accepted! You are registering as ${data.inviterName}'s Plus One.`,
+            );
+          }
+        })
+        .catch(() => setInviteError("Failed to verify invite link."))
+        .finally(() => setIsLoadingInvite(false));
+    }
+  }, [inviteToken, setPlusOneMode]);
+
+  if (isLoadingInvite) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
+        <p className="text-zinc-400 font-light animate-pulse">
+          Verifying your invite link...
+        </p>
+      </div>
+    );
+  }
+
+  if (inviteError) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <div className="w-16 h-16 bg-rose-900/20 border border-rose-500/40 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-8 h-8 text-rose-400" />
+        </div>
+        <h3 className="text-2xl font-normal text-white">Invalid Invite Link</h3>
+        <p className="text-zinc-400 font-light max-w-sm mx-auto">
+          {inviteError}
+        </p>
+        <Link href="/register" className="inline-block pt-4">
+          <Button className="rounded-full bg-white text-black px-8">
+            Start Standard Registration
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (isPlusOneFlow) {
+    return (
+      <>
         <div className="absolute top-0 left-0 h-1 bg-zinc-900 w-full">
           <div
-            className="h-full bg-purple-600 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(124,58,237,0.5)]"
-            style={{ width: `${(currentStep / 5) * 100}%` }}
+            className="h-full bg-fuchsia-600 transition-all duration-700 shadow-[0_0_10px_rgba(217,70,239,0.5)]"
+            style={{ width: `${(currentStep / 4) * 100}%` }}
           />
         </div>
-
         <CardHeader className="space-y-4 pb-8 pt-14 px-6 sm:px-12 text-center">
-          <div className="mx-auto w-14 h-14 rounded-full bg-zinc-900/50 border border-zinc-800 flex items-center justify-center mb-2">
+          <div className="mx-auto w-14 h-14 rounded-full bg-fuchsia-900/20 border border-fuchsia-500/30 flex items-center justify-center mb-2">
             {currentStep === 1 && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src="/logo.png"
-                alt="Freelife Logo"
-                className="w-12 h-12 object-contain rounded-full"
-              />
+              <Users className="w-6 h-6 text-fuchsia-400" />
             )}
             {currentStep === 2 && (
-              <UtensilsCrossed className="w-6 h-6 text-purple-400" />
+              <Sparkles className="w-6 h-6 text-fuchsia-400" />
             )}
-            {currentStep === 3 && <Users className="w-6 h-6 text-purple-400" />}
+            {currentStep === 3 && (
+              <CreditCard className="w-6 h-6 text-fuchsia-400" />
+            )}
             {currentStep === 4 && (
-              <Sparkles className="w-6 h-6 text-purple-400" />
-            )}
-            {currentStep === 5 && (
-              <CheckCircle2 className="w-6 h-6 text-purple-400" />
+              <CheckCircle2 className="w-6 h-6 text-fuchsia-400" />
             )}
           </div>
-
-          <CardTitle className="text-3xl sm:text-4xl font-light tracking-tight text-white">
-            {currentStep === 1 && "Your Invitation Awaits"}
-            {currentStep === 2 && "Curate Your Evening"}
-            {currentStep === 3 && "Who is accompanying you?"}
-            {currentStep === 4 && "The Free Guest Pass"}
-            {currentStep === 5 && "Reservation Complete"}
+          <CardTitle className="text-3xl font-light text-white">
+            {currentStep === 1 && "Complete Your RSVP"}
+            {currentStep === 2 && "The Free Guest Pass"}
+            {currentStep === 3 && "Finalize Payment"}
+            {currentStep === 4 && "Reservation Complete"}
           </CardTitle>
-
-          <CardDescription className="text-zinc-400 text-sm sm:text-base font-light">
-            {currentStep === 1 &&
-              "Begin by entering your details and confirming your support."}
-            {currentStep === 2 &&
-              "Select how you would like to experience the night."}
+          <CardDescription className="text-zinc-400">
+            {currentStep < 4 && (
+              <span className="block mb-2 text-fuchsia-400/80 font-medium">
+                Invited by: {inviterName}
+              </span>
+            )}
+            {currentStep === 1 && "Enter your details to link your ticket."}
+            {currentStep === 2 && "Invite two friends to join the celebration."}
             {currentStep === 3 &&
-              "Please provide the details of your Plus One."}
-            {currentStep === 4 && "Invite two friends to join the celebration."}
-            {currentStep === 5 &&
-              "Your reservation has been received. You will receive an email shortly once verified."}
+              "Upload your transfer receipt to secure your spot."}
           </CardDescription>
         </CardHeader>
-
         <CardContent className="px-6 sm:px-12 pb-12">
-          {currentStep === 1 && <Step1Form />}
-          {currentStep === 2 && <Step2Form />}
-          {currentStep === 3 && <Step3Form />}
-          {currentStep === 4 && <Step4Form />}
-
-          {currentStep === 5 && (
+          {currentStep === 1 && <PlusOneStep1 />}
+          {currentStep === 2 && <PlusOneStep2 />}
+          {currentStep === 3 && <PlusOneStep3 />}
+          {currentStep === 4 && (
             <div className="text-center space-y-6 py-6 animate-in fade-in duration-700">
-              <div className="w-20 h-20 bg-purple-900/20 border border-purple-500/40 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-10 h-10 text-purple-400" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-normal text-white">
-                  You are all set!
-                </h3>
-                <p className="text-sm text-zinc-400 font-light max-w-sm mx-auto">
-                  Our admin team is verifying your transfer receipt. Your gate
-                  access tokens and matchmaking details will be emailed to you.
-                </p>
-              </div>
-              <Link href="/" className="inline-block pt-4">
-                <Button className="h-12 px-8 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-200 font-light text-sm">
-                  Return to Home
-                </Button>
-              </Link>
+              <CheckCircle2 className="w-16 h-16 text-fuchsia-400 mx-auto" />
+              <h3 className="text-xl font-normal text-white">
+                You are all set!
+              </h3>
+              <p className="text-sm text-zinc-400 font-light max-w-sm mx-auto">
+                Your ticket is now linked to {inviterName}. We will email your
+                Gate Token once the admin verifies the payment.
+              </p>
             </div>
           )}
         </CardContent>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="absolute top-0 left-0 h-1 bg-zinc-900 w-full">
+        <div
+          className="h-full bg-purple-600 transition-all duration-700 shadow-[0_0_10px_rgba(124,58,237,0.5)]"
+          style={{ width: `${(currentStep / 6) * 100}%` }}
+        />
+      </div>
+      <CardHeader className="space-y-4 pb-8 pt-14 px-6 sm:px-12 text-center">
+        <div className="mx-auto w-14 h-14 rounded-full bg-zinc-900/50 border border-zinc-800 flex items-center justify-center mb-2">
+          {currentStep === 1 && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/logo.png"
+              alt="Freelife Logo"
+              className="w-12 h-12 object-contain rounded-full"
+            />
+          )}
+          {currentStep === 2 && (
+            <UtensilsCrossed className="w-6 h-6 text-purple-400" />
+          )}
+          {currentStep === 3 && <Users className="w-6 h-6 text-purple-400" />}
+          {currentStep === 4 && (
+            <Sparkles className="w-6 h-6 text-purple-400" />
+          )}
+          {currentStep === 5 && (
+            <CreditCard className="w-6 h-6 text-purple-400" />
+          )}
+          {currentStep === 6 && (
+            <CheckCircle2 className="w-6 h-6 text-purple-400" />
+          )}
+        </div>
+        <CardTitle className="text-3xl sm:text-4xl font-light text-white">
+          {currentStep === 1 && "Your Invitation Awaits"}
+          {currentStep === 2 && "Curate Your Evening"}
+          {currentStep === 3 && "Who is accompanying you?"}
+          {currentStep === 4 && "The Free Guest Pass"}
+          {currentStep === 5 && "Finalize Payment"}
+          {currentStep === 6 && "Reservation Complete"}
+        </CardTitle>
+        <CardDescription className="text-zinc-400 font-light">
+          {currentStep === 1 &&
+            "Begin by entering your details and confirming your support."}
+          {currentStep === 2 &&
+            "Select how you would like to experience the night."}
+          {currentStep === 3 && "Please provide the details of your Plus One."}
+          {currentStep === 4 && "Invite two friends to join the celebration."}
+          {currentStep === 5 &&
+            "Upload your transfer receipt to secure your spot."}
+          {currentStep === 6 &&
+            "Your reservation has been received. You will receive an email shortly once verified."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-6 sm:px-12 pb-12">
+        {currentStep === 1 && <Step1Form />}
+        {currentStep === 2 && <Step2Form />}
+        {currentStep === 3 && <Step3Form />}
+        {currentStep === 4 && <Step4Form />}
+        {currentStep === 5 && <Step5Form />}
+        {currentStep === 6 && (
+          <div className="text-center space-y-6 py-6 animate-in fade-in duration-700">
+            <div className="w-20 h-20 bg-purple-900/20 border border-purple-500/40 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-10 h-10 text-purple-400" />
+            </div>
+            <h3 className="text-xl font-normal text-white">You are all set!</h3>
+            <p className="text-sm text-zinc-400 font-light max-w-sm mx-auto">
+              Our admin team is verifying your transfer receipt. Your gate
+              access tokens will be emailed to you.
+            </p>
+            <Link href="/" className="inline-block pt-4">
+              <Button className="h-12 px-8 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-200 font-light text-sm">
+                Return to Home
+              </Button>
+            </Link>
+          </div>
+        )}
+      </CardContent>
+    </>
+  );
+}
+
+export default function RegistrationPage() {
+  return (
+    <main className="relative min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans">
+      <Card className="relative z-10 w-full max-w-2xl bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/5 rounded-md shadow-2xl overflow-hidden">
+        <Suspense
+          fallback={
+            <div className="p-20 text-center text-zinc-400">
+              <Loader2 className="w-10 h-10 animate-spin mx-auto text-purple-500 mb-4" />
+              Loading registration...
+            </div>
+          }
+        >
+          <RegistrationFormRouter />
+        </Suspense>
       </Card>
     </main>
   );

@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import crypto from "crypto";
 
 const apiRegistrationSchema = z.object({
   attendeeName: z.string().min(2),
   attendeeEmail: z.string().email(),
   attendeePhone: z.string().min(10),
+  eventType: z.enum(["AFTER_PARTY_ONLY", "PURPLE_BALL_AND_AFTER_PARTY"]),
   amount: z.coerce.number().min(10000),
   receiptUrl: z.string().min(1),
-  eventType: z.enum(["AFTER_PARTY_ONLY", "PURPLE_BALL_AND_AFTER_PARTY"]),
+
+  isPlusOneReady: z.boolean().optional(),
+  parentId: z.string().optional(),
 
   plusOneName: z.string().optional(),
   plusOneEmail: z.string().optional(),
@@ -25,17 +29,21 @@ const apiRegistrationSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const eventSettings = await prisma.eventSettings.findUnique({
+      where: { id: "global" },
+    });
+    if (eventSettings && !eventSettings.isRegistrationOpen) {
+      return NextResponse.json(
+        { error: "Registration is currently closed." },
+        { status: 403 },
+      );
+    }
+
     const body: unknown = await request.json();
     const validation = apiRegistrationSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid registration data submitted.",
-          details: validation.error.format(),
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid data." }, { status: 400 });
     }
 
     const data = validation.data;
@@ -46,10 +54,19 @@ export async function POST(request: Request) {
 
     if (existingBooking) {
       return NextResponse.json(
-        { error: "An attendee with this email has already registered." },
+        { error: "Email already registered." },
         { status: 409 },
       );
     }
+
+    const needsInviteToken =
+      data.eventType === "PURPLE_BALL_AND_AFTER_PARTY" &&
+      data.isPlusOneReady === false &&
+      !data.parentId;
+
+    const inviteToken = needsInviteToken
+      ? crypto.randomBytes(6).toString("hex")
+      : null;
 
     const newBooking = await prisma.booking.create({
       data: {
@@ -59,8 +76,11 @@ export async function POST(request: Request) {
         eventType: data.eventType,
         amount: data.amount,
         receiptUrl: data.receiptUrl,
+        inviteToken: inviteToken,
+        parentId: data.parentId || null,
 
         ...(data.eventType === "PURPLE_BALL_AND_AFTER_PARTY" &&
+          data.isPlusOneReady &&
           data.plusOneName && {
             plusOne: {
               create: {
@@ -106,7 +126,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error("[API_REGISTER_ERROR]", error);
     return NextResponse.json(
-      { error: "Internal server error during registration." },
+      { error: "Internal server error." },
       { status: 500 },
     );
   }

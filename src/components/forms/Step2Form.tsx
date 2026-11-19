@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, useWatch, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -8,9 +8,12 @@ import {
   stepTwoSchema,
 } from "@/stores/useRegistrationStore";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, GlassWater, Loader2, UtensilsCrossed } from "lucide-react";
-import { toast } from "sonner";
-import { useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  UserPlus,
+  Link as LinkIcon,
+} from "lucide-react";
 
 type Step2FormValues = z.infer<typeof stepTwoSchema>;
 
@@ -21,41 +24,18 @@ export default function Step2Form() {
   const form = useForm<Step2FormValues>({
     resolver: zodResolver(stepTwoSchema),
     defaultValues: {
-      eventType: formData.eventType,
+      isPlusOneReady: formData.isPlusOneReady,
     },
   });
 
-  const currentEventType = useWatch({
-    control: form.control,
-    name: "eventType",
-  });
+  const isReady = useWatch({ control: form.control, name: "isPlusOneReady" });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const onSubmit: SubmitHandler<Step2FormValues> = async (data) => {
+  const onSubmit: SubmitHandler<Step2FormValues> = (data) => {
     setFormData(data);
-
-    if (data.eventType === "AFTER_PARTY_ONLY") {
-      setIsSubmitting(true);
-      try {
-        const response = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...formData, ...data }),
-        });
-
-        if (!response.ok) throw new Error("Registration failed");
-
-        toast.success("Ready for the after party! Reservation complete.");
-        jumpToStep(5);
-      } catch (error) {
-        console.log("Error submitting registration:", error);
-        toast.error("Failed to submit registration. Please try again.");
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
+    if (data.isPlusOneReady) {
       nextStep();
+    } else {
+      jumpToStep(5);
     }
   };
 
@@ -65,72 +45,66 @@ export default function Step2Form() {
       className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-700"
     >
       <div className="space-y-4">
-        <p className="text-sm text-zinc-400 font-light px-2">
-          Please select your experience for December 11th:
-        </p>
+        <h3 className="text-sm font-semibold text-zinc-300 tracking-wide uppercase px-2 text-center">
+          Are you registering with your Plus One right now?
+        </h3>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <button
             type="button"
             onClick={() =>
-              form.setValue("eventType", "PURPLE_BALL_AND_AFTER_PARTY", {
-                shouldValidate: true,
-              })
+              form.setValue("isPlusOneReady", true, { shouldValidate: true })
             }
-            className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-500 text-left ${
-              currentEventType === "PURPLE_BALL_AND_AFTER_PARTY"
-                ? "bg-purple-900/20 border-purple-500/50 shadow-[0_0_15px_rgba(124,58,237,0.15)]"
-                : "bg-black/50 border-zinc-800 hover:border-zinc-700"
-            }`}
+            className={`w-full flex items-center p-6 rounded-[2rem] border transition-all duration-500 text-left ${isReady === true ? "bg-purple-900/20 border-purple-500/50 shadow-[0_0_15px_rgba(124,58,237,0.15)]" : "bg-black/50 border-zinc-800 hover:border-zinc-700"}`}
           >
+            <div
+              className={`w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center shrink-0 ${isReady === true ? "border-purple-400" : "border-zinc-600"}`}
+            >
+              {isReady === true && (
+                <div className="w-3 h-3 bg-purple-400 rounded-full" />
+              )}
+            </div>
             <div>
               <h3
-                className={`text-lg font-medium ${currentEventType === "PURPLE_BALL_AND_AFTER_PARTY" ? "text-purple-300" : "text-zinc-200"}`}
+                className={`text-base font-medium flex items-center gap-2 ${isReady === true ? "text-purple-300" : "text-zinc-200"}`}
               >
-                Purple Ball & After Party
+                Yes, they are ready <UserPlus className="w-4 h-4" />
               </h3>
               <p className="text-zinc-500 text-sm font-light mt-1">
-                The full dinner experience. You will be required to bring a Plus
-                One.
+                I will enter their details and pay for both of us now.
               </p>
             </div>
-            <UtensilsCrossed
-              className={`w-6 h-6 ${currentEventType === "PURPLE_BALL_AND_AFTER_PARTY" ? "text-purple-400" : "text-zinc-700"}`}
-            />
           </button>
 
           <button
             type="button"
             onClick={() =>
-              form.setValue("eventType", "AFTER_PARTY_ONLY", {
-                shouldValidate: true,
-              })
+              form.setValue("isPlusOneReady", false, { shouldValidate: true })
             }
-            className={`w-full flex items-center justify-between p-6 rounded-[2rem] border transition-all duration-500 text-left ${
-              currentEventType === "AFTER_PARTY_ONLY"
-                ? "bg-purple-900/20 border-purple-500/50 shadow-[0_0_15px_rgba(124,58,237,0.15)]"
-                : "bg-black/50 border-zinc-800 hover:border-zinc-700"
-            }`}
+            className={`w-full flex items-center p-6 rounded-[2rem] border transition-all duration-500 text-left ${isReady === false ? "bg-purple-900/20 border-purple-500/50 shadow-[0_0_15px_rgba(124,58,237,0.15)]" : "bg-black/50 border-zinc-800 hover:border-zinc-700"}`}
           >
+            <div
+              className={`w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center shrink-0 ${isReady === false ? "border-purple-400" : "border-zinc-600"}`}
+            >
+              {isReady === false && (
+                <div className="w-3 h-3 bg-purple-400 rounded-full" />
+              )}
+            </div>
             <div>
               <h3
-                className={`text-lg font-medium ${currentEventType === "AFTER_PARTY_ONLY" ? "text-purple-300" : "text-zinc-200"}`}
+                className={`text-base font-medium flex items-center gap-2 ${isReady === false ? "text-purple-300" : "text-zinc-200"}`}
               >
-                After Party Only
+                No, I will invite them later <LinkIcon className="w-4 h-4" />
               </h3>
               <p className="text-zinc-500 text-sm font-light mt-1">
-                Join us later for the hangout. Coming solo is perfectly fine.
+                I will get a unique link to send them when they are ready.
               </p>
             </div>
-            <GlassWater
-              className={`w-6 h-6 ${currentEventType === "AFTER_PARTY_ONLY" ? "text-purple-400" : "text-zinc-700"}`}
-            />
           </button>
         </div>
-
-        {form.formState.errors.eventType && (
-          <p className="text-rose-500 text-xs px-4 mt-2">
-            {form.formState.errors.eventType.message}
+        {form.formState.errors.isPlusOneReady && (
+          <p className="text-rose-500 text-xs px-4 mt-2 text-center">
+            {form.formState.errors.isPlusOneReady.message}
           </p>
         )}
       </div>
@@ -143,21 +117,12 @@ export default function Step2Form() {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-
         <Button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full h-14 rounded-full bg-white text-black hover:bg-zinc-200 font-medium text-lg"
+          className="w-full h-14 rounded-full bg-white text-black hover:bg-zinc-200 font-medium text-lg flex items-center justify-center gap-2"
         >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" /> Submitting...
-            </>
-          ) : currentEventType === "AFTER_PARTY_ONLY" ? (
-            "Complete Registration"
-          ) : (
-            "Continue to Plus One"
-          )}
+          {isReady ? "Add Plus One" : "Continue to Payment"}{" "}
+          <ArrowRight className="w-5 h-5" />
         </Button>
       </div>
     </form>

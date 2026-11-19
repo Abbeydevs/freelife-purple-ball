@@ -9,14 +9,12 @@ import {
 } from "@/stores/useRegistrationStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Sparkles, CheckCircle2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useState } from "react";
+import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 
 type Step4FormValues = z.infer<typeof stepFourSchema>;
 
 export default function Step4Form() {
-  const { formData, prevStep, jumpToStep } = useRegistrationStore();
+  const { formData, setFormData, prevStep, nextStep } = useRegistrationStore();
 
   const form = useForm<Step4FormValues>({
     resolver: zodResolver(stepFourSchema),
@@ -30,27 +28,9 @@ export default function Step4Form() {
     },
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const onSubmit: SubmitHandler<Step4FormValues> = async (data) => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, ...data }),
-      });
-
-      if (!response.ok) throw new Error("Registration failed");
-
-      toast.success("Guest passes prepared. Reservation complete.");
-      jumpToStep(5);
-    } catch (error) {
-      console.log("Error submitting reservation:", error);
-      toast.error("Failed to submit reservation. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const onSubmit: SubmitHandler<Step4FormValues> = (data) => {
+    setFormData(data);
+    nextStep();
   };
 
   return (
@@ -60,8 +40,8 @@ export default function Step4Form() {
     >
       <div className="text-center pb-2">
         <p className="text-zinc-400 text-sm font-light">
-          You and your Plus One have unlocked two free guest passes. Invite two
-          single friends to be matchmade for the evening.
+          You and your Plus One unlocked two free guest passes. Invite two
+          single friends to be matchmade (Optional).
         </p>
       </div>
 
@@ -71,48 +51,25 @@ export default function Step4Form() {
           <h3 className="text-sm font-semibold text-purple-300 tracking-wide uppercase mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4" /> Guest invited by You
           </h3>
-
           <div className="space-y-4">
-            <div>
+            <Input
+              {...form.register("primaryGuestName")}
+              placeholder="Guest's Full Name (Optional)"
+              className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-purple-500"
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                {...form.register("primaryGuestName")}
-                placeholder="Guest's Full Name"
+                {...form.register("primaryGuestEmail")}
+                type="email"
+                placeholder="Email Address (Optional)"
                 className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-purple-500"
               />
-              {form.formState.errors.primaryGuestName && (
-                <p className="text-rose-500 text-xs px-4 mt-2">
-                  {form.formState.errors.primaryGuestName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Input
-                  {...form.register("primaryGuestEmail")}
-                  type="email"
-                  placeholder="Email Address"
-                  className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-purple-500"
-                />
-                {form.formState.errors.primaryGuestEmail && (
-                  <p className="text-rose-500 text-xs px-4 mt-2">
-                    {form.formState.errors.primaryGuestEmail.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Input
-                  {...form.register("primaryGuestPhone")}
-                  type="tel"
-                  placeholder="Phone Number"
-                  className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-purple-500"
-                />
-                {form.formState.errors.primaryGuestPhone && (
-                  <p className="text-rose-500 text-xs px-4 mt-2">
-                    {form.formState.errors.primaryGuestPhone.message}
-                  </p>
-                )}
-              </div>
+              <Input
+                {...form.register("primaryGuestPhone")}
+                type="tel"
+                placeholder="Phone Number (Optional)"
+                className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-purple-500"
+              />
             </div>
           </div>
         </div>
@@ -122,48 +79,25 @@ export default function Step4Form() {
           <h3 className="text-sm font-semibold text-fuchsia-300 tracking-wide uppercase mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4" /> Guest invited by your Plus One
           </h3>
-
           <div className="space-y-4">
-            <div>
+            <Input
+              {...form.register("plusOneGuestName")}
+              placeholder="Guest's Full Name (Optional)"
+              className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-fuchsia-500"
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                {...form.register("plusOneGuestName")}
-                placeholder="Guest's Full Name"
+                {...form.register("plusOneGuestEmail")}
+                type="email"
+                placeholder="Email Address (Optional)"
                 className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-fuchsia-500"
               />
-              {form.formState.errors.plusOneGuestName && (
-                <p className="text-rose-500 text-xs px-4 mt-2">
-                  {form.formState.errors.plusOneGuestName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Input
-                  {...form.register("plusOneGuestEmail")}
-                  type="email"
-                  placeholder="Email Address"
-                  className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-fuchsia-500"
-                />
-                {form.formState.errors.plusOneGuestEmail && (
-                  <p className="text-rose-500 text-xs px-4 mt-2">
-                    {form.formState.errors.plusOneGuestEmail.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Input
-                  {...form.register("plusOneGuestPhone")}
-                  type="tel"
-                  placeholder="Phone Number"
-                  className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-fuchsia-500"
-                />
-                {form.formState.errors.plusOneGuestPhone && (
-                  <p className="text-rose-500 text-xs px-4 mt-2">
-                    {form.formState.errors.plusOneGuestPhone.message}
-                  </p>
-                )}
-              </div>
+              <Input
+                {...form.register("plusOneGuestPhone")}
+                type="tel"
+                placeholder="Phone Number (Optional)"
+                className="h-12 w-full rounded-full bg-zinc-900/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-1 focus-visible:ring-fuchsia-500"
+              />
             </div>
           </div>
         </div>
@@ -173,25 +107,15 @@ export default function Step4Form() {
         <Button
           type="button"
           onClick={prevStep}
-          className="h-14 w-14 rounded-full bg-black/50 border border-zinc-800 hover:bg-zinc-900 text-zinc-400 p-0 shrink-0 transition-colors"
+          className="h-14 w-14 rounded-full bg-black/50 border border-zinc-800 hover:bg-zinc-900 text-zinc-400 p-0 shrink-0"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-
         <Button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full h-14 rounded-full bg-white text-black hover:bg-zinc-200 font-medium text-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full h-14 rounded-full bg-white text-black hover:bg-zinc-200 font-medium text-lg flex items-center justify-center gap-2"
         >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" /> Finalizing...
-            </>
-          ) : (
-            <>
-              Submit Reservation <CheckCircle2 className="w-5 h-5" />
-            </>
-          )}
+          Continue to Payment <ArrowRight className="w-5 h-5" />
         </Button>
       </div>
     </form>

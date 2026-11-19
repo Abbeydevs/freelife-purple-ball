@@ -30,6 +30,11 @@ model Booking {
   receiptUrl String
   status     PaymentStatus @default(PENDING)
 
+  inviteToken    String?   @unique
+  parentId       String?
+  parentBooking  Booking?  @relation("PlusOneLink", fields: [parentId], references: [id])
+  plusOneBooking Booking[] @relation("PlusOneLink")
+
   qrToken     String?   @unique
   isCheckedIn Boolean   @default(false)
   checkedInAt DateTime?
@@ -42,6 +47,12 @@ model Booking {
 
   @@index([status])
   @@index([qrToken])
+}
+
+model EventSettings {
+  id                 String   @id @default("global")
+  isRegistrationOpen Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
 }
 
 model PlusOne {
