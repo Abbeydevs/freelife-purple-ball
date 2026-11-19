@@ -16,82 +16,105 @@ import {
   LogOut,
   Sparkles,
   Loader2,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { logoutAdmin } from "../actions";
 
-export type AdminTicketItem = {
-  id: string;
-  attendeeName: string;
-  attendeeEmail: string;
-  attendeePhone: string;
-  amount: number;
-  receiptUrl: string;
-  eventType: string;
-  plusOneName: string | null;
-  plusOnePhone: string | null;
-  status: PaymentStatus;
-  primaryGuestName?: string | null;
-  plusOneGuestName?: string | null;
+export type AdminTicketGroup = {
+  primary: {
+    id: string;
+    attendeeName: string;
+    attendeeEmail: string;
+    attendeePhone: string;
+    amount: number;
+    receiptUrl: string;
+    eventType: string;
+    status: PaymentStatus;
+  };
+  plusOne: {
+    name: string;
+    phone: string;
+    isFreelifer: boolean;
+    status: PaymentStatus;
+    receiptUrl: string | null;
+    bookingId?: string;
+  } | null;
+  totalAmount: number;
+  invitedGuests: { name: string; role: string }[];
 };
 
-// Strict Literal Types for Filters
 type StatusFilterType = "ALL" | PaymentStatus;
 type EventFilterType = "ALL" | "PURPLE_BALL" | "AFTER_PARTY";
 
 export default function AdminDashboardClient({
   initialBookings,
 }: {
-  initialBookings: AdminTicketItem[];
+  initialBookings: AdminTicketGroup[];
 }) {
   const router = useRouter();
-  const [bookings, setBookings] = useState<AdminTicketItem[]>(initialBookings);
+  const [bookings, setBookings] = useState<AdminTicketGroup[]>(initialBookings);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>("ALL");
   const [eventFilter, setEventFilter] = useState<EventFilterType>("ALL");
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // Filter Logic
-  const filteredBookings = bookings.filter((booking) => {
+  const filteredBookings = bookings.filter((group) => {
+    const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
-      booking.attendeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.attendeeEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.attendeePhone.includes(searchQuery);
+      group.primary.attendeeName.toLowerCase().includes(searchLower) ||
+      group.primary.attendeeEmail.toLowerCase().includes(searchLower) ||
+      group.primary.attendeePhone.includes(searchQuery) ||
+      (group.plusOne &&
+        group.plusOne.name.toLowerCase().includes(searchLower)) ||
+      (group.plusOne && group.plusOne.phone.includes(searchQuery));
 
     const matchesStatus =
-      statusFilter === "ALL" || booking.status === statusFilter;
+      statusFilter === "ALL" ||
+      group.primary.status === statusFilter ||
+      (group.plusOne && group.plusOne.status === statusFilter);
 
     let matchesEvent = true;
     if (eventFilter === "PURPLE_BALL") {
-      matchesEvent = booking.eventType === "PURPLE_BALL_AND_AFTER_PARTY";
+      matchesEvent = group.primary.eventType === "PURPLE_BALL_AND_AFTER_PARTY";
     } else if (eventFilter === "AFTER_PARTY") {
-      matchesEvent = booking.eventType === "AFTER_PARTY_ONLY";
+      matchesEvent = group.primary.eventType === "AFTER_PARTY_ONLY";
     }
 
     return matchesSearch && matchesStatus && matchesEvent;
   });
 
-  // Analytics Math
-  const totalApproved = bookings.filter((b) => b.status === "APPROVED").length;
+  const totalPrimaryApproved = bookings.filter(
+    (b) => b.primary.status === "APPROVED",
+  ).length;
+  const totalPlusOneApproved = bookings.filter(
+    (b) => b.plusOne?.status === "APPROVED",
+  ).length;
+  const totalApproved = totalPrimaryApproved + totalPlusOneApproved;
+
   const totalDinner = bookings.filter(
-    (b) => b.eventType === "PURPLE_BALL_AND_AFTER_PARTY",
+    (b) => b.primary.eventType === "PURPLE_BALL_AND_AFTER_PARTY",
   ).length;
   const totalAfterParty = bookings.filter(
-    (b) => b.eventType === "AFTER_PARTY_ONLY",
+    (b) => b.primary.eventType === "AFTER_PARTY_ONLY",
   ).length;
-  const totalFunds = bookings.reduce(
-    (sum, b) => sum + (b.status === "APPROVED" ? b.amount : 0),
-    0,
-  );
 
-  // Logout action using the router
+  const totalFunds = bookings.reduce((sum, group) => {
+    let groupSum = 0;
+    if (group.primary.status === "APPROVED") groupSum += group.primary.amount;
+    if (group.plusOne && group.plusOne.status === "APPROVED") {
+      const poAmount = group.totalAmount - group.primary.amount;
+      groupSum += poAmount;
+    }
+    return sum + groupSum;
+  }, 0);
+
   const handleLogout = async () => {
     await logoutAdmin();
     router.push("/admin/login");
   };
 
-  // Approval Action
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (id: string, isPlusOne: boolean = false) => {
     setProcessingId(id);
     try {
       const response = await fetch("/api/admin/approve", {
@@ -102,9 +125,21 @@ export default function AdminDashboardClient({
 
       if (!response.ok) throw new Error("Approval failed");
 
-      // Update local state instantly
       setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "APPROVED" } : b)),
+        prev.map((group) => {
+          if (isPlusOne && group.plusOne?.bookingId === id) {
+            return {
+              ...group,
+              plusOne: { ...group.plusOne, status: "APPROVED" },
+            };
+          } else if (!isPlusOne && group.primary.id === id) {
+            return {
+              ...group,
+              primary: { ...group.primary, status: "APPROVED" },
+            };
+          }
+          return group;
+        }),
       );
       toast.success("Payment verified. Gate Token emailed to attendee.");
     } catch (error) {
@@ -124,7 +159,6 @@ export default function AdminDashboardClient({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-      {/* Top Header & Logout */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-light text-white tracking-tight">
@@ -143,12 +177,11 @@ export default function AdminDashboardClient({
         </Button>
       </div>
 
-      {/* Analytics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-[#160B24]/90 border border-purple-500/20 rounded-2xl shadow-xl">
           <CardContent className="p-6">
             <p className="text-xs font-medium text-purple-400 uppercase tracking-widest">
-              Total Registrations
+              Total Primary Groups
             </p>
             <p className="text-3xl font-normal text-white mt-2">
               {bookings.length}
@@ -158,7 +191,7 @@ export default function AdminDashboardClient({
         <Card className="bg-emerald-950/20 border border-emerald-500/20 rounded-2xl shadow-xl">
           <CardContent className="p-6">
             <p className="text-xs font-medium text-emerald-400 uppercase tracking-widest">
-              Approved
+              Approved Tickets
             </p>
             <p className="text-3xl font-normal text-white mt-2">
               {totalApproved}
@@ -190,7 +223,6 @@ export default function AdminDashboardClient({
         </Card>
       </div>
 
-      {/* Filters & Search */}
       <div className="bg-[#0a0a0a] border border-zinc-800 rounded-[2rem] p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
@@ -203,7 +235,6 @@ export default function AdminDashboardClient({
         </div>
 
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          {/* Status Filters */}
           <div className="flex bg-zinc-900 rounded-full p-1 border border-zinc-800 shrink-0">
             {statusOptions.map((status) => (
               <button
@@ -220,7 +251,6 @@ export default function AdminDashboardClient({
             ))}
           </div>
 
-          {/* Event Filters */}
           <div className="flex bg-zinc-900 rounded-full p-1 border border-zinc-800 shrink-0">
             <button
               onClick={() => setEventFilter("ALL")}
@@ -256,28 +286,28 @@ export default function AdminDashboardClient({
         </div>
       </div>
 
-      {/* Verification Queue (The List) */}
       <div className="space-y-4">
         {filteredBookings.length === 0 ? (
           <div className="text-center py-20 text-zinc-500 font-light border border-dashed border-zinc-800 rounded-3xl">
             No registrations match your search or filters.
           </div>
         ) : (
-          filteredBookings.map((booking) => (
+          filteredBookings.map((group) => (
             <Card
-              key={booking.id}
+              key={group.primary.id}
               className="bg-[#11081A]/80 border border-purple-900/30 rounded-3xl overflow-hidden shadow-lg"
             >
               <div className="flex flex-col md:flex-row">
-                {/* Left Side: Primary Info */}
-                <div className="flex-1 p-6 space-y-4 border-b md:border-b-0 md:border-r border-purple-900/30">
-                  <div className="flex justify-between items-start">
+                <div className="flex-1 p-6 border-b md:border-b-0 md:border-r border-purple-900/30">
+                  <div className="flex justify-between items-start mb-6">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-xl font-medium text-white">
-                          {booking.attendeeName}
+                        <h3 className="text-xl font-medium text-white flex items-center gap-2">
+                          <Users className="w-5 h-5 text-purple-500" /> Primary:{" "}
+                          {group.primary.attendeeName}
                         </h3>
-                        {booking.eventType === "PURPLE_BALL_AND_AFTER_PARTY" ? (
+                        {group.primary.eventType ===
+                        "PURPLE_BALL_AND_AFTER_PARTY" ? (
                           <span className="bg-fuchsia-900/30 border border-fuchsia-500/30 text-fuchsia-300 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1">
                             <UtensilsCrossed className="w-3 h-3" /> Dinner
                           </span>
@@ -287,100 +317,157 @@ export default function AdminDashboardClient({
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-light text-zinc-400">
-                        {booking.attendeeEmail} • {booking.attendeePhone}
+                      <p className="text-sm font-light text-zinc-400 pl-7">
+                        {group.primary.attendeeEmail} •{" "}
+                        {group.primary.attendeePhone}
                       </p>
                     </div>
-                    {booking.status === "APPROVED" ? (
-                      <span className="flex items-center gap-1 text-emerald-400 text-sm font-medium bg-emerald-950/30 px-3 py-1 rounded-full border border-emerald-500/20">
-                        <CheckCircle2 className="w-4 h-4" /> Approved
-                      </span>
-                    ) : booking.status === "REJECTED" ? (
-                      <span className="flex items-center gap-1 text-rose-400 text-sm font-medium bg-rose-950/30 px-3 py-1 rounded-full border border-rose-500/20">
-                        Rejected
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-amber-400 text-sm font-medium bg-amber-950/30 px-3 py-1 rounded-full border border-amber-500/20">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Pending
-                        Verif.
-                      </span>
-                    )}
                   </div>
 
-                  {/* Plus One Details (Only if Dinner) */}
-                  {booking.eventType === "PURPLE_BALL_AND_AFTER_PARTY" &&
-                    booking.plusOneName && (
-                      <div className="bg-black/40 rounded-xl p-4 border border-white/5 space-y-2">
-                        <p className="text-xs uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                          <Users className="w-4 h-4 text-purple-400" /> Plus One
-                          Accompanying
-                        </p>
-                        <p className="text-sm text-zinc-200">
-                          {booking.plusOneName} • {booking.plusOnePhone}
-                        </p>
+                  {group.primary.eventType ===
+                    "PURPLE_BALL_AND_AFTER_PARTY" && (
+                    <div className="bg-black/40 rounded-xl p-4 border border-white/5 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-xs uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-1">
+                            <UserPlus className="w-4 h-4 text-purple-400" />{" "}
+                            Plus One Accompanying
+                          </p>
+                          {group.plusOne ? (
+                            <div className="flex items-center gap-3">
+                              <p className="text-sm text-zinc-200">
+                                {group.plusOne.name} • {group.plusOne.phone}
+                              </p>
+                              {group.plusOne.isFreelifer ? (
+                                <span className="bg-purple-900/30 text-purple-300 border border-purple-500/30 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full">
+                                  Freelifer
+                                </span>
+                              ) : (
+                                <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full">
+                                  External Guest
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-rose-400/80 font-light italic">
+                              Awaiting RSVP from invite link...
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                  {/* Matchmade Guests (If any) */}
-                  {(booking.primaryGuestName || booking.plusOneGuestName) && (
+                  {group.invitedGuests.length > 0 && (
                     <div className="bg-black/40 rounded-xl p-4 border border-white/5 space-y-2 mt-2">
-                      <p className="text-xs uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                      <p className="text-xs uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-2">
                         <Sparkles className="w-4 h-4 text-fuchsia-400" /> Free
                         Guest Passes Claimed
                       </p>
-                      {booking.primaryGuestName && (
-                        <p className="text-sm text-zinc-300 font-light">
-                          <span className="text-fuchsia-400/50 mr-1">
-                            By Primary:
-                          </span>{" "}
-                          {booking.primaryGuestName}
-                        </p>
-                      )}
-                      {booking.plusOneGuestName && (
-                        <p className="text-sm text-zinc-300 font-light">
-                          <span className="text-fuchsia-400/50 mr-1">
-                            By Plus One:
-                          </span>{" "}
-                          {booking.plusOneGuestName}
-                        </p>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        {group.invitedGuests.map((guest, idx) => (
+                          <p
+                            key={idx}
+                            className="text-sm text-zinc-300 font-light"
+                          >
+                            <span className="text-fuchsia-400/50 mr-1 text-xs uppercase">
+                              By {guest.role}:
+                            </span>{" "}
+                            {guest.name}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Right Side: The Money Room */}
                 <div className="w-full md:w-80 bg-[#160B24] p-6 flex flex-col justify-center space-y-6">
                   <div className="text-center">
                     <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">
-                      Declared Support
+                      Total Group Support
                     </p>
                     <p className="text-3xl font-light text-white">
-                      ₦{booking.amount.toLocaleString()}
+                      ₦{group.totalAmount.toLocaleString()}
                     </p>
                   </div>
 
-                  <a
-                    href={booking.receiptUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
-                  >
-                    View Transfer Receipt <ExternalLink className="w-4 h-4" />
-                  </a>
-
-                  {booking.status === "PENDING" && (
-                    <Button
-                      onClick={() => handleApprove(booking.id)}
-                      disabled={processingId === booking.id}
-                      className="w-full h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-medium cursor-pointer"
-                    >
-                      {processingId === booking.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                  <div className="space-y-2 border-t border-purple-900/30 pt-4">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-400">Primary Ticket</span>
+                      {group.primary.status === "APPROVED" ? (
+                        <span className="text-emerald-400 flex items-center gap-1 text-xs">
+                          <CheckCircle2 className="w-3 h-3" /> Approved
+                        </span>
                       ) : (
-                        "Verify & Approve Payment"
+                        <span className="text-amber-400 text-xs">Pending</span>
                       )}
-                    </Button>
-                  )}
+                    </div>
+                    {group.primary.receiptUrl && (
+                      <a
+                        href={group.primary.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                      >
+                        View Receipt <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {group.primary.status === "PENDING" && (
+                      <Button
+                        onClick={() => handleApprove(group.primary.id, false)}
+                        disabled={processingId === group.primary.id}
+                        className="w-full h-8 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs mt-2"
+                      >
+                        {processingId === group.primary.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          "Approve Primary"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  {group.plusOne &&
+                    group.plusOne.bookingId &&
+                    group.plusOne.receiptUrl && (
+                      <div className="space-y-2 border-t border-purple-900/30 pt-4">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-zinc-400">Plus One Ticket</span>
+                          {group.plusOne.status === "APPROVED" ? (
+                            <span className="text-emerald-400 flex items-center gap-1 text-xs">
+                              <CheckCircle2 className="w-3 h-3" /> Approved
+                            </span>
+                          ) : (
+                            <span className="text-amber-400 text-xs">
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                        <a
+                          href={group.plusOne.receiptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                        >
+                          View Receipt <ExternalLink className="w-3 h-3" />
+                        </a>
+                        {group.plusOne.status === "PENDING" && (
+                          <Button
+                            onClick={() =>
+                              handleApprove(group.plusOne!.bookingId!, true)
+                            }
+                            disabled={processingId === group.plusOne.bookingId}
+                            className="w-full h-8 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs mt-2"
+                          >
+                            {processingId === group.plusOne.bookingId ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              "Approve Plus One"
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                 </div>
               </div>
             </Card>

@@ -23,11 +23,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-export function PlusOneStep1() {
-  const { formData, setFormData, nextStep, jumpToStep } =
-    useRegistrationStore();
+type PlusOneStep1Values = z.infer<typeof plusOneDetailsSchema>;
+type PlusOneStep2Values = z.infer<typeof stepFourSchema>;
+type PlusOneStep3Values = z.infer<typeof stepFiveSchema>;
 
-  const form = useForm<z.infer<typeof plusOneDetailsSchema>>({
+export function PlusOneStep1() {
+  const { formData, setFormData, nextStep, jumpToStep, parentId } =
+    useRegistrationStore();
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const form = useForm<PlusOneStep1Values>({
     resolver: zodResolver(plusOneDetailsSchema),
     defaultValues: {
       attendeeName: formData.attendeeName ?? "",
@@ -39,17 +44,49 @@ export function PlusOneStep1() {
 
   const isFreelifer = useWatch({ control: form.control, name: "isFreelifer" });
 
-  const onSubmit: SubmitHandler<z.infer<typeof plusOneDetailsSchema>> = (
-    data,
-  ) => {
+  const onSubmit: SubmitHandler<PlusOneStep1Values> = async (data) => {
     setFormData(data);
+
     if (data.isFreelifer) {
       toast.success(
         "Community perk unlocked! Let's get your free guest passes.",
       );
       nextStep();
-    } else {
-      jumpToStep(3);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...formData,
+        ...data,
+        amount: 0,
+        receiptUrl: "",
+        eventType: "PURPLE_BALL_AND_AFTER_PARTY" as const,
+        parentId: parentId ?? undefined,
+      };
+
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result: { error?: string } = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to submit RSVP");
+      }
+
+      toast.success("RSVP confirmed! No payment required for external guests.");
+      jumpToStep(4);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Submission failed. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -59,16 +96,18 @@ export function PlusOneStep1() {
       className="space-y-8 animate-in fade-in duration-700"
     >
       <div className="space-y-5">
-        <Input
-          {...form.register("attendeeName")}
-          placeholder="Your Full Name"
-          className="h-14 w-full rounded-full bg-black/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-purple-500"
-        />
-        {form.formState.errors.attendeeName && (
-          <p className="text-rose-500 text-xs px-4">
-            {form.formState.errors.attendeeName.message}
-          </p>
-        )}
+        <div>
+          <Input
+            {...form.register("attendeeName")}
+            placeholder="Your Full Name"
+            className="h-14 w-full rounded-full bg-black/50 border-zinc-800 text-zinc-100 px-6 font-light focus-visible:ring-purple-500"
+          />
+          {form.formState.errors.attendeeName && (
+            <p className="text-rose-500 text-xs px-4 mt-2">
+              {form.formState.errors.attendeeName.message}
+            </p>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
@@ -79,7 +118,7 @@ export function PlusOneStep1() {
               className="h-14 w-full rounded-full bg-black/50 border-zinc-800 text-zinc-100 px-6 focus-visible:ring-purple-500"
             />
             {form.formState.errors.attendeeEmail && (
-              <p className="text-rose-500 text-xs px-4">
+              <p className="text-rose-500 text-xs px-4 mt-2">
                 {form.formState.errors.attendeeEmail.message}
               </p>
             )}
@@ -92,7 +131,7 @@ export function PlusOneStep1() {
               className="h-14 w-full rounded-full bg-black/50 border-zinc-800 text-zinc-100 px-6 focus-visible:ring-purple-500"
             />
             {form.formState.errors.attendeePhone && (
-              <p className="text-rose-500 text-xs px-4">
+              <p className="text-rose-500 text-xs px-4 mt-2">
                 {form.formState.errors.attendeePhone.message}
               </p>
             )}
@@ -113,7 +152,7 @@ export function PlusOneStep1() {
             className={`w-full flex items-center p-5 rounded-[2rem] border transition-all ${isFreelifer === true ? "bg-purple-900/20 border-purple-500/50" : "bg-black/50 border-zinc-800"}`}
           >
             <div
-              className={`w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center ${isFreelifer === true ? "border-purple-400" : "border-zinc-600"}`}
+              className={`w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center shrink-0 ${isFreelifer === true ? "border-purple-400" : "border-zinc-600"}`}
             >
               {isFreelifer === true && (
                 <div className="w-2.5 h-2.5 bg-purple-400 rounded-full" />
@@ -126,10 +165,12 @@ export function PlusOneStep1() {
                 Yes, I am a Freelifer
               </h3>
               <p className="text-zinc-500 text-sm font-light mt-0.5">
-                Unlock two free matchmaking passes for single friends.
+                ₦10,000 contribution + unlocks two free matchmaking passes for
+                single friends.
               </p>
             </div>
           </button>
+
           <button
             type="button"
             onClick={() =>
@@ -138,7 +179,7 @@ export function PlusOneStep1() {
             className={`w-full flex items-center p-5 rounded-[2rem] border transition-all ${isFreelifer === false ? "bg-purple-900/20 border-purple-500/50" : "bg-black/50 border-zinc-800"}`}
           >
             <div
-              className={`w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center ${isFreelifer === false ? "border-purple-400" : "border-zinc-600"}`}
+              className={`w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center shrink-0 ${isFreelifer === false ? "border-purple-400" : "border-zinc-600"}`}
             >
               {isFreelifer === false && (
                 <div className="w-2.5 h-2.5 bg-purple-400 rounded-full" />
@@ -150,6 +191,10 @@ export function PlusOneStep1() {
               >
                 No, I am an external guest
               </h3>
+              <p className="text-zinc-500 text-sm font-light mt-0.5">
+                Complimentary access as an invited Plus One. No payment
+                required.
+              </p>
             </div>
           </button>
         </div>
@@ -157,15 +202,20 @@ export function PlusOneStep1() {
 
       <Button
         type="submit"
+        disabled={isSubmitting}
         className="w-full h-14 rounded-full bg-white text-black hover:bg-zinc-200 font-medium text-lg mt-8 flex items-center justify-center gap-2"
       >
-        {isFreelifer ? (
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" /> Submitting...
+          </>
+        ) : isFreelifer ? (
           <>
             Continue to Guest Passes <UserPlus className="w-5 h-5" />
           </>
         ) : (
           <>
-            Continue to Payment <ArrowRight className="w-5 h-5" />
+            Complete Free RSVP <CheckCircle2 className="w-5 h-5" />
           </>
         )}
       </Button>
@@ -175,12 +225,19 @@ export function PlusOneStep1() {
 
 export function PlusOneStep2() {
   const { formData, setFormData, prevStep, nextStep } = useRegistrationStore();
-  const form = useForm<z.infer<typeof stepFourSchema>>({
+  const form = useForm<PlusOneStep2Values>({
     resolver: zodResolver(stepFourSchema),
-    defaultValues: { ...formData },
+    defaultValues: {
+      primaryGuestName: formData.primaryGuestName ?? "",
+      primaryGuestEmail: formData.primaryGuestEmail ?? "",
+      primaryGuestPhone: formData.primaryGuestPhone ?? "",
+      plusOneGuestName: formData.plusOneGuestName ?? "",
+      plusOneGuestEmail: formData.plusOneGuestEmail ?? "",
+      plusOneGuestPhone: formData.plusOneGuestPhone ?? "",
+    },
   });
 
-  const onSubmit = (data: z.infer<typeof stepFourSchema>) => {
+  const onSubmit: SubmitHandler<PlusOneStep2Values> = (data) => {
     setFormData(data);
     nextStep();
   };
@@ -263,7 +320,7 @@ export function PlusOneStep2() {
         </Button>
         <Button
           type="submit"
-          className="w-full h-14 rounded-full bg-white text-black hover:bg-zinc-200 font-medium text-lg"
+          className="w-full h-14 rounded-full bg-white text-black hover:bg-zinc-200 font-medium text-lg flex items-center justify-center gap-2"
         >
           Continue to Payment <ArrowRight className="w-5 h-5" />
         </Button>
@@ -274,10 +331,10 @@ export function PlusOneStep2() {
 
 export function PlusOneStep3() {
   const { formData, prevStep, jumpToStep, parentId } = useRegistrationStore();
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const form = useForm<z.infer<typeof stepFiveSchema>>({
+  const form = useForm<PlusOneStep3Values>({
     resolver: zodResolver(stepFiveSchema),
     defaultValues: { amount: 10000, receiptUrl: formData.receiptUrl ?? "" },
   });
@@ -299,19 +356,31 @@ export function PlusOneStep3() {
         "https://api.cloudinary.com/v1_1/avdcnocd/image/upload",
         { method: "POST", body: data },
       );
-      const result = await res.json();
-      form.setValue("receiptUrl", result.secure_url, { shouldValidate: true });
-    } catch (err) {
-      console.error(err);
-      toast.error("Upload failed.");
+      const result: { secure_url?: string } = await res.json();
+      if (result.secure_url) {
+        form.setValue("receiptUrl", result.secure_url, {
+          shouldValidate: true,
+        });
+        toast.success("Receipt uploaded securely.");
+      } else {
+        throw new Error("Upload failed");
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Upload failed.");
+      }
     } finally {
       setIsUploading(false);
     }
   };
 
-  const onSubmit = async (data: z.infer<typeof stepFiveSchema>) => {
-    if (data.amount < 10000)
-      return form.setError("amount", { message: "Minimum is ₦10,000" });
+  const onSubmit: SubmitHandler<PlusOneStep3Values> = async (data) => {
+    if (data.amount < 10000) {
+      form.setError("amount", { message: "Minimum is ₦10,000" });
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -319,8 +388,8 @@ export function PlusOneStep3() {
         ...formData,
         amount: data.amount,
         receiptUrl: data.receiptUrl,
-        eventType: "PURPLE_BALL_AND_AFTER_PARTY",
-        parentId: parentId,
+        eventType: "PURPLE_BALL_AND_AFTER_PARTY" as const,
+        parentId: parentId ?? undefined,
       };
 
       const res = await fetch("/api/register", {
@@ -328,11 +397,15 @@ export function PlusOneStep3() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Failed to submit");
+      const result: { error?: string } = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to submit");
       jumpToStep(4);
-    } catch (err) {
-      console.error(err);
-      toast.error("Submission failed.");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Submission failed.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -411,10 +484,7 @@ export function PlusOneStep3() {
       <div className="flex gap-4 pt-4">
         <Button
           type="button"
-          onClick={() => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-            formData.isFreelifer ? prevStep() : jumpToStep(1);
-          }}
+          onClick={prevStep}
           className="h-14 w-14 rounded-full bg-black/50 border border-zinc-800 hover:bg-zinc-900 text-zinc-400 shrink-0"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -425,7 +495,7 @@ export function PlusOneStep3() {
           className="w-full h-14 rounded-full bg-white text-black font-medium text-lg"
         >
           {isSubmitting ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin mx-auto" />
           ) : (
             "Submit Registration"
           )}

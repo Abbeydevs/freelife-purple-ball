@@ -20,16 +20,22 @@ export default function Step5Form() {
   const [isUploadingReceipt, setIsUploadingReceipt] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const requiredAmount =
+  const isPayingForTwo =
     formData.eventType === "PURPLE_BALL_AND_AFTER_PARTY" &&
-    formData.isPlusOneReady
-      ? 20000
-      : 10000;
+    formData.isPlusOneReady === true &&
+    formData.isFreelifer === true;
+
+  const isBringingExternalGuest =
+    formData.eventType === "PURPLE_BALL_AND_AFTER_PARTY" &&
+    formData.isPlusOneReady === true &&
+    formData.isFreelifer === false;
+
+  const requiredAmount = isPayingForTwo ? 20000 : 10000;
 
   const form = useForm<Step5FormValues>({
     resolver: zodResolver(stepFiveSchema),
     defaultValues: {
-      amount: formData.amount ?? requiredAmount,
+      amount: requiredAmount,
       receiptUrl: formData.receiptUrl ?? "",
     },
   });
@@ -56,7 +62,7 @@ export default function Step5Form() {
           body: data,
         },
       );
-      const result = await response.json();
+      const result: { secure_url?: string } = await response.json();
 
       if (result.secure_url) {
         form.setValue("receiptUrl", result.secure_url, {
@@ -93,7 +99,7 @@ export default function Step5Form() {
         body: JSON.stringify({ ...formData, ...data }),
       });
 
-      const result = await response.json();
+      const result: { error?: string } = await response.json();
 
       if (!response.ok) {
         throw new Error(result.error || "Registration failed");
@@ -120,9 +126,11 @@ export default function Step5Form() {
       <div className="space-y-6">
         <div className="text-center space-y-2">
           <p className="text-sm text-zinc-400 font-light">
-            {requiredAmount === 20000
-              ? "For you and your Plus One, please make a combined contribution of at least"
-              : "To support the movement, please make a contribution of at least"}
+            {isPayingForTwo
+              ? "For you and your Freelifer Plus One, please make a combined contribution of at least"
+              : isBringingExternalGuest
+                ? "Your external Plus One attends for free. Please make your individual contribution of at least"
+                : "To support the movement, please make a contribution of at least"}
           </p>
           <h2 className="text-3xl font-normal text-white tracking-tight">
             ₦{requiredAmount.toLocaleString()}
@@ -198,6 +206,7 @@ export default function Step5Form() {
           onClick={() => {
             if (formData.eventType === "AFTER_PARTY_ONLY") jumpToStep(1);
             else if (formData.isPlusOneReady === false) jumpToStep(2);
+            else if (formData.isFreelifer === false) jumpToStep(3);
             else prevStep();
           }}
           className="h-14 w-14 rounded-full bg-black/50 border border-zinc-800 hover:bg-zinc-900 text-zinc-400 p-0 shrink-0 transition-colors"

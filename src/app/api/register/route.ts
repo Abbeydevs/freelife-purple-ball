@@ -8,8 +8,8 @@ const apiRegistrationSchema = z.object({
   attendeeEmail: z.string().email(),
   attendeePhone: z.string().min(10),
   eventType: z.enum(["AFTER_PARTY_ONLY", "PURPLE_BALL_AND_AFTER_PARTY"]),
-  amount: z.coerce.number().min(10000),
-  receiptUrl: z.string().min(1),
+  amount: z.coerce.number().min(0),
+  receiptUrl: z.string().optional().default(""),
 
   isPlusOneReady: z.boolean().optional(),
   parentId: z.string().optional(),
@@ -48,6 +48,33 @@ export async function POST(request: Request) {
 
     const data = validation.data;
 
+    const isFreeExternalPlusOne = Boolean(data.parentId) && !data.isFreelifer;
+
+    if (!isFreeExternalPlusOne) {
+      const expectedMinAmount =
+        data.eventType === "PURPLE_BALL_AND_AFTER_PARTY" &&
+        data.isPlusOneReady === true &&
+        data.isFreelifer === true
+          ? 20000
+          : 10000;
+
+      if (data.amount < expectedMinAmount) {
+        return NextResponse.json(
+          {
+            error: `Minimum support amount is ₦${expectedMinAmount.toLocaleString()}.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      if (!data.receiptUrl) {
+        return NextResponse.json(
+          { error: "Please upload your transfer receipt." },
+          { status: 400 },
+        );
+      }
+    }
+
     const existingBooking = await prisma.booking.findUnique({
       where: { attendeeEmail: data.attendeeEmail },
     });
@@ -74,8 +101,8 @@ export async function POST(request: Request) {
         attendeeEmail: data.attendeeEmail,
         attendeePhone: data.attendeePhone,
         eventType: data.eventType,
-        amount: data.amount,
-        receiptUrl: data.receiptUrl,
+        amount: isFreeExternalPlusOne ? 0 : data.amount,
+        receiptUrl: isFreeExternalPlusOne ? "" : data.receiptUrl,
         inviteToken: inviteToken,
         parentId: data.parentId || null,
 

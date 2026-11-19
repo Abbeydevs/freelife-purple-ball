@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Loader2 } from "lucide-react";
 import AdminDashboardClient, {
-  type AdminTicketItem,
+  type AdminTicketGroup,
 } from "./AdminDashboardClient";
 
 async function DashboardDataFetcher() {
@@ -16,33 +16,67 @@ async function DashboardDataFetcher() {
   }
 
   const bookingsRaw = await prisma.booking.findMany({
+    where: {
+      parentId: null,
+    },
     orderBy: { createdAt: "desc" },
+    include: {
+      plusOne: true,
+      plusOneBooking: true,
+      invitedGuests: true,
+    },
   });
 
-  const bookings: AdminTicketItem[] = bookingsRaw.map((booking) => ({
-    id: booking.id,
-    attendeeName: booking.attendeeName,
-    attendeeEmail: booking.attendeeEmail,
-    attendeePhone: booking.attendeePhone,
-    amount: booking.amount,
-    receiptUrl: booking.receiptUrl,
-    eventType: booking.eventType,
-    status: booking.status,
-    plusOneName:
-      ((booking as Record<string, unknown>).plusOneName as string | null) ??
-      null,
-    plusOnePhone:
-      ((booking as Record<string, unknown>).plusOnePhone as string | null) ??
-      null,
-    primaryGuestName:
-      ((booking as Record<string, unknown>).primaryGuestName as
-        | string
-        | null) ?? null,
-    plusOneGuestName:
-      ((booking as Record<string, unknown>).plusOneGuestName as
-        | string
-        | null) ?? null,
-  }));
+  const bookings: AdminTicketGroup[] = bookingsRaw.map((booking) => {
+    let plusOneData = null;
+
+    if (booking.plusOne) {
+      plusOneData = {
+        name: booking.plusOne.name,
+        phone: booking.plusOne.phone,
+        isFreelifer: booking.plusOne.isFreelifer,
+        status: booking.status,
+        receiptUrl: null,
+      };
+    } else if (booking.plusOneBooking && booking.plusOneBooking.length > 0) {
+      const linkedPlusOne = booking.plusOneBooking[0];
+      const isFreelifer = linkedPlusOne.amount > 0;
+      plusOneData = {
+        name: linkedPlusOne.attendeeName,
+        phone: linkedPlusOne.attendeePhone,
+        isFreelifer: isFreelifer,
+        status: linkedPlusOne.status,
+        receiptUrl: linkedPlusOne.receiptUrl,
+        bookingId: linkedPlusOne.id,
+      };
+    }
+
+    const primaryAmount = booking.amount;
+    const linkedPlusOneAmount =
+      booking.plusOneBooking && booking.plusOneBooking.length > 0
+        ? booking.plusOneBooking[0].amount
+        : 0;
+    const totalGroupAmount = primaryAmount + linkedPlusOneAmount;
+
+    return {
+      primary: {
+        id: booking.id,
+        attendeeName: booking.attendeeName,
+        attendeeEmail: booking.attendeeEmail,
+        attendeePhone: booking.attendeePhone,
+        amount: booking.amount,
+        receiptUrl: booking.receiptUrl,
+        eventType: booking.eventType,
+        status: booking.status,
+      },
+      plusOne: plusOneData,
+      totalAmount: totalGroupAmount,
+      invitedGuests: booking.invitedGuests.map((g) => ({
+        name: g.name,
+        role: g.invitedByRole,
+      })),
+    };
+  });
 
   return <AdminDashboardClient initialBookings={bookings} />;
 }
